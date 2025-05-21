@@ -95,6 +95,49 @@ from sklearn.metrics import f1_score
 
 
 def evaluate_model(predictions, ground_truth):
+    \"\"\"
+    Calcola F1-macro fra ground_truth e predictions.
+    \"\"\"
+    return f1_score(ground_truth, predictions, average='macro')
+
+
+def check_f1_threshold(f1_macro, threshold=0.999):
+    \"\"\"
+    Solleva eccezione se f1_macro < threshold.
+    \"\"\"
+    if f1_macro < threshold:
+        raise ValueError(f\"F1-macro: {f1_macro:.4f} (threshold {threshold})\")
+
+
+def load_jsonl(path):
+    \"\"\"
+    Legge un file JSONL con campi 'x' e 'y', restituisce (X, y) come numpy array.
+    \"\"\"
+    X, y = [], []
+    with open(path, 'r') as f:
+        for line in f:
+            row = json.loads(line)
+            X.append(row['x'])
+            y.append(row['y'])
+    return np.array(X), np.array(y)
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument(\"--config\", default=\"config/quality.yml\", help=\"Percorso al file di configurazione YAML\")
+    p.add_argument(\"--model\", default=\"model.joblib\", help=\"Percorso al modello serializzato\")
+    args = p.parse_args()
+
+import argparse
+import json
+import joblib
+import yaml
+import sys
+import numpy as np
+from sklearn.metrics import f1_score
+
+
+def evaluate_model(predictions, ground_truth):
     """
     Calcola F1-macro fra ground_truth e predictions.
     """

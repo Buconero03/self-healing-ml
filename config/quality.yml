@@ -1,1 +1,23 @@
-f1_macro: 0.88
+# config/quality.yml
+
+# 1. Soglie metriche
+metrics:
+  f1_macro: 0.999
+
+# 2. Percorsi dataset
+data:
+  train: data/train.jsonl
+  val:   data/val.jsonl
+
+# 3. Riproducibilità
+seed: 42
+
+# 4. Parametri self-healing
+self_heal:
+  max_iterations: 5
+  timeout_minutes: 30
+
+# 5. Policy patch
+patch:
+  max_diff_lines: 20
+

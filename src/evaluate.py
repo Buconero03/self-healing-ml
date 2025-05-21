@@ -1,3 +1,13 @@
+def evaluate_model(predictions, ground_truth):
+    from sklearn.metrics import f1_score
+    f1_macro = f1_score(ground_truth, predictions, average='macro')
+    return f1_macro
+
+def check_f1_threshold(f1_macro, threshold=0.999):
+    if f1_macro < threshold:
+        raise ValueError(f"F1-macro: {f1_macro} (threshold {threshold})")
+
+if __name__ == "__main__":
 # src/evaluate.py
 import argparse, json, joblib, yaml, sys, numpy as np
 from sklearn.metrics import f1_score

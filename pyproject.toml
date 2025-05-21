@@ -1,0 +1,20 @@
+[project]
+name = "self-healing-ml"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "gianni",email = "alect1@live.it"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "torch (>=2.7.0,<3.0.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+    "joblib (>=1.5.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

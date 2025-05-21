@@ -1,6 +1,22 @@
 diff --git a/src/evaluate.py b/src/evaluate.py
-index e69de29..d95f3ad 100644
+index 1c2d3e4..5f6g7h8 100644
 --- a/src/evaluate.py
 +++ b/src/evaluate.py
-@@ -10,0 +11,1 @@
-+    pass
+@@ -1,6 +1,6 @@
+
+
+-def evaluate_model(predictions, ground_truth):
++def evaluate_model(predictions, ground_truth): 
+
+@@ -12,7 +12,7 @@ def check_f1_threshold(f1_macro, threshold=0.999):
+
+@@ -20,7 +20,7 @@ def load_jsonl(path):
+@@ -28,7 +28,7 @@ def load_jsonl(path):
+
+
+
+
+-    f1 = f1_score(y_val, preds, average="macro")
++    f1 = evaluate_model(preds, y_val)
+
+

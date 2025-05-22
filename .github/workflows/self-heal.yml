@@ -1,0 +1,35 @@
+name: self-heal
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  self-heal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install deps
+        run: poetry install --no-interaction --no-root
+
+      - name: Run self-healing cycle
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          poetry run python self_heal.py
+
+      - name: Run unit tests (post-patch)
+        run: |
+          poetry run pytest -q
+

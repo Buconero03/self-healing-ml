@@ -1,7 +1,9 @@
 name: self-heal
+
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -42,28 +44,22 @@ jobs:
           name: coverage-xml
           path: coverage.xml
 
-
-
-   - name: Push logs to Loki
-     if: always()
-     env:
-       LOKI_ENDPOINT: ${{ secrets.LOKI_ENDPOINT }}
-       LOKI_TOKEN:    ${{ secrets.LOKI_TOKEN }}
-     run: |
-       set -e
-       logfile=$(mktemp)
-       grep -E '"event":' -R . > "$logfile" || true
-       if [ -s "$logfile" ]; then
-         curl -s -X POST \
+      - name: Push logs to Loki
+        if: always()
+        env:
+          LOKI_ENDPOINT: ${{ secrets.LOKI_ENDPOINT }}
+          LOKI_TOKEN:    ${{ secrets.LOKI_TOKEN }}
+        run: |
+          set -e
+          logfile=$(mktemp)
+          grep -E '"event":' -R . > "$logfile" || true
+          if [ -s "$logfile" ]; then
+            curl -s -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $LOKI_TOKEN" \
               --data-binary @"$logfile" \
               "$LOKI_ENDPOINT/loki/api/v1/push"
-       else
-         echo "No JSON logs found, skipping push to Loki."
-       fi
-
-
-
-
+          else
+            echo "No JSON logs found, skipping push to Loki."
+          fi
 

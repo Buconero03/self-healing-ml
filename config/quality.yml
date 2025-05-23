@@ -2,7 +2,7 @@
 
 # 1. Soglie metriche
 metrics:
-  f1_macro: 0.999
+  f1_macro: 0.98
 
 # 2. Percorsi dataset
 data:

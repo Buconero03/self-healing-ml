@@ -23,13 +23,47 @@ jobs:
       - name: Install deps
         run: poetry install --no-interaction --no-root
 
+      - name: Security lint (Bandit)
+        run: poetry run bandit -q -r src
+
       - name: Run self-healing cycle
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           poetry run python self_heal.py
 
-      - name: Run unit tests (post-patch)
+      - name: Run unit tests + coverage
         run: |
-          poetry run pytest -q
+          poetry run pytest --cov=src --cov-report xml:coverage.xml -q
+
+      - name: Upload coverage xml
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+
+
+   - name: Push logs to Loki
+     if: always()
+     env:
+       LOKI_ENDPOINT: ${{ secrets.LOKI_ENDPOINT }}
+       LOKI_TOKEN:    ${{ secrets.LOKI_TOKEN }}
+     run: |
+       set -e
+       logfile=$(mktemp)
+       grep -E '"event":' -R . > "$logfile" || true
+       if [ -s "$logfile" ]; then
+         curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $LOKI_TOKEN" \
+              --data-binary @"$logfile" \
+              "$LOKI_ENDPOINT/loki/api/v1/push"
+       else
+         echo "No JSON logs found, skipping push to Loki."
+       fi
+
+
+
+
 

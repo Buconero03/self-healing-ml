@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ───────────────────────── 1) job di self-healing ─────────────────────────
   self-heal:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -62,4 +63,35 @@ jobs:
           else
             echo "No JSON logs found, skipping push to Loki."
           fi
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-joblib
+          path: model.joblib
+
+  # ───────────────────────── 2) job di canary deploy ─────────────────────────
+  deploy-canary:
+    needs: self-heal
+    runs-on: ubuntu-latest
+    if: ${{ needs.self-heal.result == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: model-joblib
+          path: ./deploy
+
+      - name: Canary deploy
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          echo "Deploying model to canary environment (5% traffic)…"
+          curl -X POST https://tuo-api.deploy/Canary \
+               -H "Authorization: Bearer $DEPLOY_TOKEN" \
+               -F "model=@deploy/model.joblib" \
+               -F "traffic_percentage=5"
 

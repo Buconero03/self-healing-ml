@@ -1,0 +1,36 @@
+name: Data Drift Monitor
+
+# Esegui ogni giorno alle 08:00 UTC
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          pip install scipy
+
+      - name: Run drift monitor
+        id: drift
+        run: |
+          python scripts/monitor_drift.py \
+            --baseline data/train.jsonl \
+            --current data/val.jsonl
+        continue-on-error: false
+
+      - name: Alert if drift
+        if: failure()
+        run: echo "⚠️ Data drift detected! please retrain model."
+

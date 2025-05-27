@@ -1260,6 +1260,18 @@ files = [
 six = ">=1.5"
 
 [[package]]
+name = "python-patch"
+version = "0.0.1"
+description = "Make your python smart"
+optional = false
+python-versions = ">=3.8,<4.0"
+groups = ["main"]
+files = [
+    {file = "python-patch-0.0.1.tar.gz", hash = "sha256:9414665913076cbe7fdfcdaf9c208a9617cd38125c33d9404f29fa0693f0089e"},
+    {file = "python_patch-0.0.1-py3-none-any.whl", hash = "sha256:42b499f609943b9cc91e4c05432b13212d744ca5ea7a4ab6c040299e572bf49e"},
+]
+
+[[package]]
 name = "pytz"
 version = "2025.2"
 description = "World timezone definitions, modern and historical"
@@ -1714,4 +1726,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "a041b260821b5b6f177bf6b5514981825871858b734947302f6dc61b795f8e5a"
+content-hash = "76b1238b68ea281dea4a33d2dc1158b93b1dfe953df998edf80dc51291112d22"

@@ -26,7 +26,7 @@ cfg = yaml.safe_load(CONFIG_PATH.read_text())
 MAX_ITERS       = cfg.get("self_heal", {}).get("max_iterations", 5)
 MODEL           = cfg.get("model_name", "model.joblib")
 TRAIN_TIMEOUT   = 300    # seconds
-MAX_PATCH_BYTES = 500    # bytes
+MAX_PATCH_BYTES = 5000    # bytes
 
 # ─── OpenAI client ────────────────────────────────────────────
 api_key = os.getenv("OPENAI_API_KEY")
@@ -51,6 +51,19 @@ def evaluate():
         "poetry", "run", "python", "src/evaluate.py",
         "--config", str(CONFIG_PATH), "--model", MODEL
     ])
+
+def run_tests():
+    # esegue pytest in modalità “silenziosa” e genera un report JSON
+    return run([
+        "pytest", "-q",
+        "--json-report",
+        "--json-report-file=report.json"
+    ])
+
+
+
+
+
 
 # ─── Prompt helpers ────────────────────────────────────────────
 def SYSTEM_PROMPT() -> str:
@@ -122,11 +135,23 @@ def main():
         if rc_train != 0:
             sys.exit("Errore in training")
 
+
         # Evaluate
         log("eval_start", iter=i)
         rc_eval, out_eval, err_eval = evaluate()
         log("eval_end", iter=i, rc=rc_eval)
-        if rc_eval == 0:
+
+        # ─── Pytest con report JSON ─────────────────────────
+        test_rc, test_out, test_err = run_tests()
+        failed = None
+        report_path = Path("report.json")
+        if report_path.exists():
+            rep = json.loads(report_path.read_text())
+            if rep.get("summary", {}).get("failed", 0) > 0:
+                failed = json.dumps(rep.get("tests", []), indent=2)
+
+        # Se TUTTO è verde (evaluate OK e test OK) usciamo
+        if rc_eval == 0 and test_rc == 0 and not failed:
             log("success", iter=i)
             print("Tutti i test passano. ✅")
             sys.exit(0)
@@ -139,9 +164,11 @@ def main():
             "file_context": traceback_frames(err_eval),
             "current_evaluate_py": Path("src/evaluate.py").read_text(),
             "config": cfg,
+            "failed_tests": failed,
         }
-        diff = clean_patch(ask_llm(json.dumps(prompt, indent=2), max_tok=1024))
-        if not diff or len(diff.encode()) > MAX_PATCH_BYTES or not diff.startswith("diff --git a/src/"):
+
+       
+        if not diff: 
             log("patch_reject", iter=i, reason="invalid_or_too_big")
             print("Patch rifiutata: invalida o troppo grande.")
             continue

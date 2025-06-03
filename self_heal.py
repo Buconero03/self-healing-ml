@@ -128,13 +128,19 @@ def main():
         log("iter_start", iter=i)
         print(f"===== Iterazione {i}/{MAX_ITERS} =====")
 
-        # Train
-        log("train_start", iter=i)
-        rc_train, _, _ = train()
-        log("train_end", iter=i, rc=rc_train)
-        if rc_train != 0:
-            sys.exit("Errore in training")
+    # ─── Train (con stampa di stdout/ stderr) ───────────────────
+    log("train_start", iter=i)
+    rc_train, out_train, err_train = train()
+    log("train_end", iter=i, rc=rc_train)
+    if rc_train != 0:
+        # Stampiamo tutto quello che train.py ha scritto
+        print("----- TRAIN STDOUT -----")
+        print(out_train.strip() or "<vuoto>")
+        print("----- TRAIN STDERR -----")
+        print(err_train.strip() or "<vuoto>")
+        sys.exit("Errore in training")
 
+        
 
         # Evaluate
         log("eval_start", iter=i)

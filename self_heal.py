@@ -26,7 +26,7 @@ cfg = yaml.safe_load(CONFIG_PATH.read_text())
 MAX_ITERS       = cfg.get("self_heal", {}).get("max_iterations", 5)
 MODEL           = cfg.get("model_name", "model.joblib")
 TRAIN_TIMEOUT   = 300    # seconds
-MAX_PATCH_BYTES = 5000    # bytes
+MAX_PATCH_BYTES = 5000   # bytes
 
 # ─── OpenAI client ────────────────────────────────────────────
 api_key = os.getenv("OPENAI_API_KEY")
@@ -59,11 +59,6 @@ def run_tests():
         "--json-report",
         "--json-report-file=report.json"
     ])
-
-
-
-
-
 
 # ─── Prompt helpers ────────────────────────────────────────────
 def SYSTEM_PROMPT() -> str:
@@ -112,6 +107,7 @@ def ask_llm(prompt_json: str, max_tok: int = 1024) -> str:
 # ─── Apply diff ─────────────────────────────────────────────────
 def apply_diff(diff: str) -> bool:
     df = Path("patch.diff"); df.write_text(diff)
+    # Prova prima con git apply --check, poi git apply, poi git apply -3, poi patch -p1
     if run(["git", "apply", "--check", str(df)])[0] == 0 and run(["git", "apply", str(df)])[0] == 0:
         return True
     if run(["git", "apply", "-3", str(df)])[0] == 0:
@@ -128,21 +124,22 @@ def main():
         log("iter_start", iter=i)
         print(f"===== Iterazione {i}/{MAX_ITERS} =====")
 
-    # ─── Train (con stampa di stdout/ stderr) ───────────────────
-    log("train_start", iter=i)
-    rc_train, out_train, err_train = train()
-    log("train_end", iter=i, rc=rc_train)
-    if rc_train != 0:
-        # Stampiamo tutto quello che train.py ha scritto
-        print("----- TRAIN STDOUT -----")
-        print(out_train.strip() or "<vuoto>")
-        print("----- TRAIN STDERR -----")
-        print(err_train.strip() or "<vuoto>")
-        sys.exit("Errore in training")
+        # ─── Train (con stampa di stdout/ stderr) ───────────────────
+        log("train_start", iter=i)
+        rc_train, out_train, err_train = train()
+        log("train_end", iter=i, rc=rc_train)
+        if rc_train != 0:
+            # Se il training fallisce, esci immediatamente
+            print("----- TRAIN STDOUT -----")
+            print(out_train.strip() or "<vuoto>")
+            print("----- TRAIN STDERR -----")
+            print(err_train.strip() or "<vuoto>")
+            sys.exit("Errore in training")
 
-        
+        # ←─ Qui dedentiamo tutto il blocco Evaluate/Test/LLM
+        #     in modo che si esegua SOLO se rc_train == 0
 
-        # Evaluate
+        # ─── Evaluate ─────────────────────────────────────────
         log("eval_start", iter=i)
         rc_eval, out_eval, err_eval = evaluate()
         log("eval_end", iter=i, rc=rc_eval)
@@ -162,7 +159,7 @@ def main():
             print("Tutti i test passano. ✅")
             sys.exit(0)
 
-        # Request diff
+        # ─── Request diff all'LLM ─────────────────────────────
         prompt = {
             "goal": f"F1-macro ≥ {cfg['metrics']['f1_macro']}",
             "error_trace": err_eval,
@@ -173,8 +170,11 @@ def main():
             "failed_tests": failed,
         }
 
-       
-        if not diff: 
+        # ←── Qui assegniamo diff con la chiamata a ask_llm()
+        raw_response = ask_llm(json.dumps(prompt, indent=2), max_tok=MAX_PATCH_BYTES)
+        diff = clean_patch(raw_response)[:MAX_PATCH_BYTES]  # pulisci e tronca
+
+        if not diff:
             log("patch_reject", iter=i, reason="invalid_or_too_big")
             print("Patch rifiutata: invalida o troppo grande.")
             continue
@@ -182,10 +182,15 @@ def main():
         log("patch_attempt", iter=i, size=len(diff))
         print("Patch ricevuta, provo ad applicarla…")
         if apply_diff(diff):
+            # Se la patch applica ok, ripeto evaluate per verificare che ora passi
             rc2, _, _ = evaluate()
             if rc2 == 0:
+                # Committo la patch al repo
                 subprocess.run(["git", "add", "src/evaluate.py"], stdout=subprocess.DEVNULL)
-                subprocess.run(["git", "commit", "-m", f"auto-patch diff: iter {i}"], stdout=subprocess.DEVNULL)
+                subprocess.run(
+                    ["git", "commit", "-m", f"auto-patch diff: iter {i}"],
+                    stdout=subprocess.DEVNULL
+                )
                 log("patch_accept", iter=i, mode="diff", size=len(diff))
                 print("Patch valida, test superati. ✅ Committato.")
                 sys.exit(0)
@@ -197,7 +202,7 @@ def main():
             log("patch_reject", iter=i, reason="apply_failed")
             print("Patch non applicabile; fallback full-file.")
 
-        # Full‑file fallback
+        # ─── Full-file fallback ────────────────────────────────
         full_prompt = {
             "instruction": (
                 "Riscrivi interamente il file src/evaluate.py come codice Python valido, "
@@ -216,7 +221,10 @@ def main():
         rc3, _, err3 = evaluate()
         if rc3 == 0:
             subprocess.run(["git", "add", "src/evaluate.py"], stdout=subprocess.DEVNULL)
-            subprocess.run(["git", "commit", "-m", f"auto-patch full-file: iter {i}"], stdout=subprocess.DEVNULL)
+            subprocess.run(
+                ["git", "commit", "-m", f"auto-patch full-file: iter {i}"],
+                stdout=subprocess.DEVNULL
+            )
             log("patch_accept", iter=i, mode="full_file", chars=len(full_text))
             print("File completo valido, test superati. ✅")
             sys.exit(0)
@@ -228,6 +236,6 @@ def main():
     print("Massimo iterazioni raggiunto; necessita intervento umano ✋")
     sys.exit(4)
 
+
 if __name__ == "__main__":
     main()
-
